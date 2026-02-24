@@ -4,6 +4,11 @@ const path = require('path');
 
 class Logger {
   constructor() {
+    // Wait for app to be ready before getting paths
+    if (!app.isReady()) {
+      throw new Error('Logger must be initialized after app is ready');
+    }
+    
     this.logPath = path.join(app.getPath('userData'), 'logs');
     this.ensureLogDir();
     this.currentLogFile = path.join(this.logPath, `app-${this.getDateString()}.log`);

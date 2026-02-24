@@ -13,58 +13,117 @@ const state = {
 };
 
 // DOM Elements
-const elements = {
-  sessionList: document.getElementById('session-list'),
-  messagesContainer: document.getElementById('messages-container'),
-  welcomeScreen: document.getElementById('welcome-screen'),
-  messageInput: document.getElementById('message-input'),
-  sendBtn: document.getElementById('send-btn'),
-  newSessionBtn: document.getElementById('new-session-btn'),
-  modelSelect: document.getElementById('model-select'),
-  searchInput: document.getElementById('search-input'),
-  settingsBtn: document.getElementById('settings-btn'),
-  settingsModal: document.getElementById('settings-modal'),
-  renameModal: document.getElementById('rename-modal'),
-  attachmentBtn: document.getElementById('attachment-btn'),
-  fileAttachments: document.getElementById('file-attachments'),
-  currentModel: document.getElementById('current-model'),
-  taskStatus: document.getElementById('task-status'),
-  taskProgress: document.getElementById('task-progress'),
-  browserPreview: document.getElementById('browser-preview'),
-  browserScreenshot: document.getElementById('browser-screenshot'),
-  browserLaunchBtn: document.getElementById('browser-launch-btn'),
-  browserCloseBtn: document.getElementById('browser-close-btn')
-};
+const elements = {};
+
+function initElements() {
+  elements.sessionList = document.getElementById('session-list');
+  elements.messagesContainer = document.getElementById('messages-container');
+  elements.welcomeScreen = document.getElementById('welcome-screen');
+  elements.messageInput = document.getElementById('message-input');
+  elements.sendBtn = document.getElementById('send-btn');
+  elements.newSessionBtn = document.getElementById('new-session-btn');
+  elements.modelSelect = document.getElementById('model-select');
+  elements.searchInput = document.getElementById('search-input');
+  elements.settingsBtn = document.getElementById('settings-btn');
+  elements.settingsModal = document.getElementById('settings-modal');
+  elements.renameModal = document.getElementById('rename-modal');
+  elements.attachmentBtn = document.getElementById('attachment-btn');
+  elements.fileAttachments = document.getElementById('file-attachments');
+  elements.currentModel = document.getElementById('current-model');
+  elements.taskStatus = document.getElementById('task-status');
+  elements.taskProgress = document.getElementById('task-progress');
+  elements.browserPreview = document.getElementById('browser-preview');
+  elements.browserScreenshot = document.getElementById('browser-screenshot');
+  elements.browserLaunchBtn = document.getElementById('browser-launch-btn');
+  elements.browserCloseBtn = document.getElementById('browser-close-btn');
+  
+  // Check if critical elements exist
+  const criticalElements = ['sessionList', 'messagesContainer', 'welcomeScreen', 'messageInput', 'sendBtn'];
+  for (const name of criticalElements) {
+    if (!elements[name]) {
+      console.error(`[Double] 关键元素缺失: ${name}`);
+      return false;
+    }
+  }
+  return true;
+}
 
 // Initialize
 async function init() {
-  await loadConfig();
-  await loadSessions();
-  setupEventListeners();
-  setupTheme();
+  console.log('[Double] 初始化开始...');
   
-  // Check if API keys are configured
-  const config = state.config;
-  if (!config.models.deepseek?.apiKey && !config.models.moonshot?.apiKey) {
-    showSettings();
+  // Initialize DOM elements first
+  if (!initElements()) {
+    alert('页面元素加载失败，请刷新重试');
+    return;
+  }
+  console.log('[Double] DOM元素初始化完成');
+  
+  try {
+    await loadConfig();
+    console.log('[Double] 配置加载完成');
+    
+    await loadSessions();
+    console.log('[Double] 会话列表加载完成');
+    
+    setupEventListeners();
+    console.log('[Double] 事件监听器设置完成');
+    
+    setupTheme();
+    console.log('[Double] 主题设置完成');
+    
+    // Check if API keys are configured
+    const config = state.config;
+    if (config && !config.models.deepseek?.apiKey && !config.models.moonshot?.apiKey) {
+      showSettings();
+    }
+    
+    console.log('[Double] 初始化完成！');
+  } catch (error) {
+    console.error('[Double] 初始化失败:', error);
+    alert('应用初始化失败: ' + error.message);
   }
 }
 
 // Load configuration
 async function loadConfig() {
-  state.config = await ipcRenderer.invoke('get-config');
-  state.currentModel = state.config.defaultModel || 'deepseek';
-  state.theme = state.config.theme || 'auto';
-  
-  // Update UI
-  elements.modelSelect.value = state.currentModel;
-  updateCurrentModelDisplay();
+  try {
+    state.config = await ipcRenderer.invoke('get-config');
+    state.currentModel = state.config.defaultModel || 'deepseek';
+    state.theme = state.config.theme || 'auto';
+    
+    // Update UI
+    if (elements.modelSelect) {
+      elements.modelSelect.value = state.currentModel;
+    }
+    updateCurrentModelDisplay();
+  } catch (error) {
+    console.error('[Double] 加载配置失败:', error);
+    // 使用默认配置
+    state.config = {
+      version: '1.0.0',
+      theme: 'auto',
+      models: {
+        deepseek: { enabled: true, apiKey: '', defaultModel: 'deepseek-chat' },
+        moonshot: { enabled: true, apiKey: '', defaultModel: 'moonshot-v1-128k' }
+      },
+      defaultModel: 'deepseek'
+    };
+    state.currentModel = 'deepseek';
+    state.theme = 'auto';
+  }
 }
 
 // Load all sessions
 async function loadSessions() {
-  state.sessions = await ipcRenderer.invoke('get-all-sessions');
-  renderSessionList();
+  try {
+    state.sessions = await ipcRenderer.invoke('get-all-sessions');
+    renderSessionList();
+  } catch (error) {
+    console.error('[Double] 加载会话失败:', error);
+    state.sessions = [];
+    renderSessionList();
+  }
 }
 
 // Render session list

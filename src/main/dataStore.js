@@ -4,6 +4,11 @@ const { app } = require('electron');
 
 class DataStore {
   constructor() {
+    // Wait for app to be ready before getting paths
+    if (!app.isReady()) {
+      throw new Error('DataStore must be initialized after app is ready');
+    }
+    
     this.dataPath = path.join(app.getPath('userData'), 'double-data');
     this.sessionsPath = path.join(this.dataPath, 'sessions');
     this.configPath = path.join(this.dataPath, 'config.json');

@@ -41,12 +41,12 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Initialize logger first
-  logger = new Logger();
-  setupErrorHandlers(logger);
-  logger.info('Application starting', { version: app.getVersion() });
-  
   try {
+    // Initialize logger first (after app is ready)
+    logger = new Logger();
+    setupErrorHandlers(logger);
+    logger.info('Application starting', { version: app.getVersion() });
+    
     // Initialize data store
     dataStore = new DataStore();
     logger.info('DataStore initialized');
@@ -73,7 +73,10 @@ app.whenReady().then(() => {
     setupIPC();
     logger.info('Application ready');
   } catch (error) {
-    logger.error('Failed to initialize application', { error: error.message, stack: error.stack });
+    console.error('Failed to initialize application:', error);
+    if (logger) {
+      logger.error('Failed to initialize application', { error: error.message, stack: error.stack });
+    }
     dialog.showErrorBox('初始化错误', `应用启动失败: ${error.message}`);
     app.quit();
   }
