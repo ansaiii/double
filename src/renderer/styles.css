@@ -905,3 +905,65 @@ body {
     width: 200px;
   }
 }
+
+/* Browser preview in sidebar */
+.browser-preview {
+  margin-top: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.browser-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.browser-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-progress {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.task-progress .step {
+  padding: 4px 0;
+  border-left: 2px solid var(--accent-color);
+  padding-left: 8px;
+  margin: 4px 0;
+}
+
+.task-progress .step.completed {
+  border-left-color: var(--success-color);
+  color: var(--text-tertiary);
+}
+
+/* Animations for notifications */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}

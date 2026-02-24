@@ -4,11 +4,13 @@ const fs = require('fs');
 const DataStore = require('./dataStore');
 const AIService = require('./aiService');
 const FileService = require('./fileService');
+const BrowserService = require('./browserService');
 
 let mainWindow;
 let dataStore;
 let aiService;
 let fileService;
+let browserService;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -46,6 +48,15 @@ app.whenReady().then(() => {
   
   // Initialize file service
   fileService = new FileService(dataStore.dataPath);
+  
+  // Initialize browser service
+  browserService = new BrowserService();
+  browserService.setStatusCallback((status) => {
+    // Send status update to renderer
+    if (mainWindow) {
+      mainWindow.webContents.send('browser-status', status);
+    }
+  });
 
   createWindow();
   setupIPC();
@@ -258,5 +269,36 @@ function setupIPC() {
     } catch (error) {
       return { error: true, message: error.message };
     }
+  });
+
+  // Browser control operations
+  ipcMain.handle('browser-launch', async () => {
+    try {
+      await browserService.launch();
+      return { success: true };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('browser-close', async () => {
+    await browserService.close();
+    return { success: true };
+  });
+
+  ipcMain.handle('browser-execute', async (event, instruction) => {
+    try {
+      const config = dataStore.getConfig();
+      const allowedDomains = config.browser?.allowedDomains || [];
+      
+      const result = await browserService.executeTask(instruction, allowedDomains);
+      return result;
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('browser-status', () => {
+    return browserService.getStatus();
   });
 }

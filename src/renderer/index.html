@@ -94,10 +94,21 @@
           <div class="model-display" id="current-model">DeepSeek</div>
         </div>
 
-        <div class="panel-section" id="task-panel" style="display: none;">
+        <div class="panel-section" id="task-panel">
           <label>📊 当前任务</label>
           <div class="task-status" id="task-status">空闲</div>
           <div class="task-progress" id="task-progress"></div>
+          <div id="browser-preview" class="browser-preview" style="display: none;">
+            <img id="browser-screenshot" src="" alt="浏览器截图">
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <label>🌐 浏览器控制</label>
+          <div class="browser-controls">
+            <button class="quick-btn" id="browser-launch-btn">🚀 启动浏览器</button>
+            <button class="quick-btn" id="browser-close-btn" style="display: none;">❌ 关闭浏览器</button>
+          </div>
         </div>
 
         <div class="panel-divider"></div>

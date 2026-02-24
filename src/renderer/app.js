@@ -8,7 +8,8 @@ const state = {
   isStreaming: false,
   currentModel: 'deepseek',
   theme: 'auto',
-  pendingFiles: []
+  pendingFiles: [],
+  browserTask: null
 };
 
 // DOM Elements
@@ -26,7 +27,13 @@ const elements = {
   renameModal: document.getElementById('rename-modal'),
   attachmentBtn: document.getElementById('attachment-btn'),
   fileAttachments: document.getElementById('file-attachments'),
-  currentModel: document.getElementById('current-model')
+  currentModel: document.getElementById('current-model'),
+  taskStatus: document.getElementById('task-status'),
+  taskProgress: document.getElementById('task-progress'),
+  browserPreview: document.getElementById('browser-preview'),
+  browserScreenshot: document.getElementById('browser-screenshot'),
+  browserLaunchBtn: document.getElementById('browser-launch-btn'),
+  browserCloseBtn: document.getElementById('browser-close-btn')
 };
 
 // Initialize
@@ -292,6 +299,13 @@ async function sendMessage() {
     renderSessionList();
   }
   
+  // Check for browser intent
+  if (checkBrowserIntent(content)) {
+    // Execute browser task
+    await executeBrowserTask(content);
+    return;
+  }
+  
   // Get AI response
   state.isStreaming = true;
   elements.sendBtn.disabled = true;
@@ -501,7 +515,36 @@ function setupEventListeners() {
       updateStreamingMessage(data.fullContent);
     }
   });
-}
+
+  // Browser status listener
+  ipcRenderer.on('browser-status', (event, status) => {
+    updateBrowserStatus(status);
+  });
+
+  // Browser control buttons
+  elements.browserLaunchBtn.addEventListener('click', async () => {
+    elements.browserLaunchBtn.disabled = true;
+    elements.browserLaunchBtn.textContent = '🚀 启动中...';
+    
+    const result = await ipcRenderer.invoke('browser-launch');
+    
+    if (result.error) {
+      alert('启动失败: ' + result.message);
+      elements.browserLaunchBtn.textContent = '🚀 启动浏览器';
+      elements.browserLaunchBtn.disabled = false;
+    } else {
+      elements.browserLaunchBtn.style.display = 'none';
+      elements.browserCloseBtn.style.display = 'block';
+    }
+  });
+
+  elements.browserCloseBtn.addEventListener('click', async () => {
+    await ipcRenderer.invoke('browser-close');
+    elements.browserCloseBtn.style.display = 'none';
+    elements.browserLaunchBtn.style.display = 'block';
+    elements.browserLaunchBtn.textContent = '🚀 启动浏览器';
+    elements.browserLaunchBtn.disabled = false;
+  });
 
 // Show settings modal
 function showSettings() {
@@ -775,6 +818,128 @@ function showNotification(message) {
     notification.style.animation = 'slideOut 0.3s ease';
     setTimeout(() => notification.remove(), 300);
   }, 3000);
+}
+
+// Browser control functions
+function updateBrowserStatus(status) {
+  state.browserTask = status;
+  
+  if (status.status === 'closed') {
+    elements.taskStatus.textContent = '浏览器已关闭';
+    elements.taskProgress.innerHTML = '';
+    elements.browserPreview.style.display = 'none';
+    return;
+  }
+  
+  if (status.detail) {
+    elements.taskStatus.textContent = status.detail;
+  }
+  
+  // Add step to progress
+  if (status.status !== 'ready') {
+    const step = document.createElement('div');
+    step.className = 'step';
+    step.textContent = status.detail;
+    elements.taskProgress.appendChild(step);
+    
+    // Keep only last 3 steps
+    while (elements.taskProgress.children.length > 3) {
+      elements.taskProgress.removeChild(elements.taskProgress.firstChild);
+    }
+  }
+}
+
+// Check if message contains browser control intent
+function checkBrowserIntent(content) {
+  const keywords = [
+    '搜索', '查找', '查一下', '查', '打开', '访问', '进入',
+    '淘宝', '京东', '百度', 'google', '知乎'
+  ];
+  
+  const lower = content.toLowerCase();
+  return keywords.some(kw => lower.includes(kw.toLowerCase()));
+}
+
+// Execute browser task
+async function executeBrowserTask(instruction) {
+  // Show task panel
+  elements.taskStatus.textContent = '正在执行浏览器任务...';
+  elements.taskProgress.innerHTML = '';
+  
+  // Add browser message to chat
+  const browserMsg = {
+    role: 'assistant',
+    content: `🔍 正在执行: ${instruction}...`,
+    timestamp: new Date().toISOString(),
+    type: 'browser'
+  };
+  appendMessage(browserMsg);
+  
+  try {
+    const result = await ipcRenderer.invoke('browser-execute', instruction);
+    
+    if (result.error) {
+      // Update message with error
+      browserMsg.content = `❌ 浏览器任务失败: ${result.message}`;
+      const msgDiv = elements.messagesContainer.querySelector('.message:last-child');
+      if (msgDiv) {
+        const textDiv = msgDiv.querySelector('.message-text');
+        if (textDiv) textDiv.innerHTML = formatContent(browserMsg.content);
+      }
+      return null;
+    }
+    
+    // Show screenshot if available
+    if (result.screenshot) {
+      elements.browserScreenshot.src = `data:image/png;base64,${result.screenshot}`;
+      elements.browserPreview.style.display = 'block';
+    }
+    
+    // Build result summary
+    let summary = `✅ 任务完成!\n\n`;
+    
+    if (result.query) {
+      summary += `搜索: ${result.query}\n`;
+      summary += `来源: ${result.engine}\n\n`;
+    }
+    
+    if (result.results && result.results.length > 0) {
+      summary += `找到 ${result.results.length} 个结果:\n\n`;
+      result.results.forEach((item, i) => {
+        summary += `${i + 1}. ${item.title}`;
+        if (item.price) summary += ` - ${item.price}`;
+        summary += '\n';
+      });
+    }
+    
+    if (result.url) {
+      summary += `\n🔗 ${result.url}`;
+    }
+    
+    // Update message with result
+    browserMsg.content = summary;
+    const msgDiv = elements.messagesContainer.querySelector('.message:last-child');
+    if (msgDiv) {
+      const textDiv = msgDiv.querySelector('.message-text');
+      if (textDiv) textDiv.innerHTML = formatContent(browserMsg.content);
+    }
+    
+    // Save to session
+    if (state.currentSession) {
+      await ipcRenderer.invoke('add-message', state.currentSession.id, browserMsg);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Browser task error:', error);
+    browserMsg.content = `❌ 浏览器任务失败: ${error.message}`;
+    const msgDiv = elements.messagesContainer.querySelector('.message:last-child');
+    if (msgDiv) {
+      const textDiv = msgDiv.querySelector('.message-text');
+      if (textDiv) textDiv.innerHTML = formatContent(browserMsg.content);
+    }
+    return null;
+  }
 }
 
 // Utility functions
