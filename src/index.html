@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Double App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        p {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .platforms {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        
+        .platform {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: transform 0.3s, background 0.3s;
+        }
+        
+        .platform:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .status {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Double App</h1>
+        <p>Welcome to your cross-platform Electron application!</p>
+        <p>This app runs natively on Windows, macOS, and Linux from a single codebase.</p>
+        
+        <div class="platforms">
+            <div class="platform">🪟 Windows</div>
+            <div class="platform">🍎 macOS</div>
+            <div class="platform">🐧 Linux</div>
+        </div>
+        
+        <div class="status">
+            <div>Platform: <span id="platform">Detecting...</span></div>
+            <div>Electron Version: <span id="electron-version">Loading...</span></div>
+            <div>Node.js Version: <span id="node-version">Loading...</span></div>
+            <div>Chrome Version: <span id="chrome-version">Loading...</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Display platform information
+        document.getElementById('platform').textContent = process.platform;
+        document.getElementById('electron-version').textContent = process.versions.electron;
+        document.getElementById('node-version').textContent = process.versions.node;
+        document.getElementById('chrome-version').textContent = process.versions.chrome;
+        
+        // Add some interactivity
+        document.querySelectorAll('.platform').forEach(platform => {
+            platform.addEventListener('click', () => {
+                alert(`This app runs on ${platform.textContent}!`);
+            });
+        });
+    </script>
+</body>
+</html>

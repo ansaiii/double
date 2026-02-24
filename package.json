@@ -1,0 +1,23 @@
+{
+  "name": "double",
+  "version": "1.0.0",
+  "description": "A cross-platform application for Windows, macOS, and Linux.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": [
+    "electron",
+    "cross-platform",
+    "desktop"
+  ],
+  "author": "Jack Monday",
+  "license": "MIT",
+  "devDependencies": {
+    "electron-builder": "^24.0.0"
+  }
+}
