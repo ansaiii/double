@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Double - AI Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <span class="logo">🟢 Double</span>
+      </div>
+      <div class="header-right">
+        <select id="model-select" class="model-select">
+          <option value="deepseek">🧠 DeepSeek</option>
+          <option value="moonshot">🌙 Moonshot</option>
+        </select>
+        <button id="settings-btn" class="icon-btn" title="设置">⚙️</button>
+        <button id="minimize-btn" class="icon-btn">➖</button>
+        <button id="maximize-btn" class="icon-btn">⬜</button>
+        <button id="close-btn" class="icon-btn">❌</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Left Sidebar - Session List -->
+      <aside class="sidebar-left">
+        <div class="sidebar-header">
+          <button id="new-session-btn" class="btn-primary">
+            <span>➕</span> 新会话
+          </button>
+        </div>
+        
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="🔍 搜索对话...">
+        </div>
+
+        <div id="session-list" class="session-list">
+          <!-- Sessions will be loaded here -->
+        </div>
+      </aside>
+
+      <!-- Center - Chat Area -->
+      <main class="chat-area">
+        <div id="chat-container" class="chat-container">
+          <div class="welcome-screen" id="welcome-screen">
+            <h1>👋 欢迎使用 Double</h1>
+            <p>你的本地 AI 助手</p>
+            <div class="quick-actions">
+              <div class="quick-action-item" data-prompt="你好，请介绍一下你能做什么？">
+                <span>💬</span>
+                <div>
+                  <strong>开始对话</strong>
+                  <p>和我聊聊天</p>
+                </div>
+              </div>
+              <div class="quick-action-item" data-prompt="帮我在淘宝上搜索iPhone 16的价格">
+                <span>🌐</span>
+                <div>
+                  <strong>浏览器控制</strong>
+                  <p>让我帮你查信息</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="messages-container" class="messages-container" style="display: none;"></div>
+        </div>
+
+        <div class="input-area">
+          <div class="input-container">
+            <button id="attachment-btn" class="icon-btn" title="上传文件">📎</button>
+            <textarea id="message-input" placeholder="输入消息..." rows="1"></textarea>
+            <button id="send-btn" class="send-btn" title="发送">⬆️</button>
+          </div>
+          <div class="input-hint">
+            <span>Enter 发送 · Shift+Enter 换行</span>
+          </div>
+        </div>
+      </main>
+
+      <!-- Right Sidebar - Assistant Panel -->
+      <aside class="sidebar-right">
+        <div class="panel-header">
+          <h3>🤖 智能助手</h3>
+        </div>
+
+        <div class="panel-section">
+          <label>当前模型</label>
+          <div class="model-display" id="current-model">DeepSeek</div>
+        </div>
+
+        <div class="panel-section" id="task-panel" style="display: none;">
+          <label>📊 当前任务</label>
+          <div class="task-status" id="task-status">空闲</div>
+          <div class="task-progress" id="task-progress"></div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <div class="panel-section">
+          <label>⚡ 快捷操作</label>
+          <div class="quick-buttons">
+            <button class="quick-btn" id="clear-chat-btn">🗑️ 清空对话</button>
+            <button class="quick-btn" id="export-md-btn">📝 导出MD</button>
+            <button class="quick-btn" id="export-pdf-btn">📄 导出PDF</button>
+          </div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <div class="panel-section">
+          <label>🎨 外观</label>
+          <div class="theme-toggle">
+            <button class="theme-btn active" data-theme="light">☀️ 浅色</button>
+            <button class="theme-btn" data-theme="dark">🌙 深色</button>
+            <button class="theme-btn" data-theme="auto">⚙️ 自动</button>
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <button id="open-settings-btn" class="settings-link">⚙️ 打开设置</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ 设置</h2>
+        <button class="close-btn" id="close-settings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-tabs">
+          <button class="tab-btn active" data-tab="models">模型</button>
+          <button class="tab-btn" data-tab="appearance">外观</button>
+          <button class="tab-btn" data-tab="about">关于</button>
+        </div>
+
+        <div id="tab-models" class="tab-content active">
+          <div class="model-config">
+            <h3>🧠 DeepSeek</h3>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="deepseek-apikey" placeholder="sk-...">
+              <button class="btn-test" data-model="deepseek">测试</button>
+            </div>
+            <div class="form-group">
+              <label>默认模型</label>
+              <select id="deepseek-model">
+                <option value="deepseek-chat">DeepSeek Chat</option>
+                <option value="deepseek-reasoner">DeepSeek R1</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="model-config">
+            <h3>🌙 Moonshot</h3>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="moonshot-apikey" placeholder="sk-...">
+              <button class="btn-test" data-model="moonshot">测试</button>
+            </div>
+            <div class="form-group">
+              <label>默认模型</label>
+              <select id="moonshot-model">
+                <option value="moonshot-v1-8k">Moonshot 8K</option>
+                <option value="moonshot-v1-32k">Moonshot 32K</option>
+                <option value="moonshot-v1-128k">Moonshot 128K</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-appearance" class="tab-content">
+          <div class="form-group">
+            <label>主题</label>
+            <select id="theme-select">
+              <option value="auto">跟随系统</option>
+              <option value="light">浅色</option>
+              <option value="dark">深色</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="tab-about" class="tab-content">
+          <div class="about-info">
+            <h2>Double</h2>
+            <p>版本: 1.0.0</p>
+            <p>你的本地 AI 助手</p>
+            <p>支持 DeepSeek 和 Moonshot</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="save-settings" class="btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rename Dialog -->
+  <div id="rename-modal" class="modal">
+    <div class="modal-content small">
+      <div class="modal-header">
+        <h3>重命名会话</h3>
+        <button class="close-btn" id="close-rename">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="rename-input" placeholder="会话名称">
+        <input type="hidden" id="rename-session-id">
+      </div>
+      <div class="modal-footer">
+        <button id="cancel-rename" class="btn-secondary">取消</button>
+        <button id="confirm-rename" class="btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
