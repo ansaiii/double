@@ -639,6 +639,7 @@ function setupEventListeners() {
     elements.browserLaunchBtn.textContent = '🚀 启动浏览器';
     elements.browserLaunchBtn.disabled = false;
   });
+}
 
 // Show settings modal
 function showSettings() {
