@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const pdfParse = require('pdf-parse');
+const PDFParser = require('pdf2json');
 const mammoth = require('mammoth');
 const sharp = require('sharp');
 
@@ -85,9 +85,34 @@ class FileService {
   }
 
   async extractPdf(filePath) {
-    const buffer = fs.readFileSync(filePath);
-    const data = await pdfParse(buffer);
-    return data.text;
+    return new Promise((resolve, reject) => {
+      const pdfParser = new PDFParser();
+      
+      pdfParser.on('pdfParser_dataError', (errData) => {
+        reject(new Error(errData.parserError));
+      });
+      
+      pdfParser.on('pdfParser_dataReady', (pdfData) => {
+        // Extract text from all pages
+        let text = '';
+        if (pdfData.formImage && pdfData.formImage.Pages) {
+          pdfData.formImage.Pages.forEach((page, pageIndex) => {
+            if (pageIndex > 0) text += '\n\n';
+            text += `--- Page ${pageIndex + 1} ---\n`;
+            if (page.Texts) {
+              page.Texts.forEach(textItem => {
+                if (textItem.R && textItem.R[0] && textItem.R[0].T) {
+                  text += decodeURIComponent(textItem.R[0].T) + ' ';
+                }
+              });
+            }
+          });
+        }
+        resolve(text.trim());
+      });
+      
+      pdfParser.loadPDF(filePath);
+    });
   }
 
   async extractDocx(filePath) {
