@@ -431,6 +431,51 @@ body {
   border-color: var(--accent-color);
 }
 
+/* File attachments */
+.file-attachments {
+  max-width: 800px;
+  margin: 0 auto 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.file-attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.file-attachment .file-icon {
+  font-size: 16px;
+}
+
+.file-attachment .file-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-attachment .file-remove {
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.file-attachment .file-remove:hover {
+  color: var(--error-color);
+}
+
 .input-container textarea {
   flex: 1;
   border: none;

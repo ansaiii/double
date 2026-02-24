@@ -1,11 +1,14 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const DataStore = require('./dataStore');
 const AIService = require('./aiService');
+const FileService = require('./fileService');
 
 let mainWindow;
 let dataStore;
 let aiService;
+let fileService;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -40,6 +43,9 @@ app.whenReady().then(() => {
   // Initialize AI service with config
   const config = dataStore.getConfig();
   aiService = new AIService(config);
+  
+  // Initialize file service
+  fileService = new FileService(dataStore.dataPath);
 
   createWindow();
   setupIPC();
@@ -155,5 +161,102 @@ function setupIPC() {
     });
 
     return result.response === 0;
+  });
+
+  // File operations
+  ipcMain.handle('select-file', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [
+        { name: '所有支持的文件', extensions: ['pdf', 'docx', 'doc', 'txt', 'md', 'png', 'jpg', 'jpeg', 'gif'] },
+        { name: '文档', extensions: ['pdf', 'docx', 'doc', 'txt', 'md'] },
+        { name: '图片', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'] },
+        { name: '所有文件', extensions: ['*'] }
+      ]
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      return fileService.getFileInfo(result.filePaths[0]);
+    }
+    return null;
+  });
+
+  ipcMain.handle('upload-file', async (event, sessionId, filePath, originalName) => {
+    try {
+      return await fileService.saveFile(sessionId, filePath, originalName);
+    } catch (error) {
+      console.error('Upload file error:', error);
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('read-file-content', async (event, filePath) => {
+    try {
+      const ext = path.extname(filePath).toLowerCase();
+      if (['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'].includes(ext)) {
+        // For images, return base64
+        const base64 = await fileService.getImageBase64(filePath);
+        return { type: 'image', data: base64, mimeType: fileService.getMimeType(ext) };
+      } else {
+        // For text files, return content
+        const content = fs.readFileSync(filePath, 'utf8');
+        return { type: 'text', content };
+      }
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  // Export operations
+  ipcMain.handle('export-markdown', async (event, sessionId, content) => {
+    try {
+      const session = dataStore.getSession(sessionId);
+      if (!session) return { error: true, message: '会话不存在' };
+
+      const result = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: `${session.title}.md`,
+        filters: [
+          { name: 'Markdown', extensions: ['md'] },
+          { name: '所有文件', extensions: ['*'] }
+        ]
+      });
+
+      if (!result.canceled) {
+        fs.writeFileSync(result.filePath, content, 'utf8');
+        return { success: true, path: result.filePath };
+      }
+      return { canceled: true };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('export-pdf', async (event, htmlContent) => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: '对话.pdf',
+        filters: [
+          { name: 'PDF', extensions: ['pdf'] }
+        ]
+      });
+
+      if (!result.canceled) {
+        // Use Electron's print to PDF feature
+        const win = new BrowserWindow({ show: false });
+        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+        const pdfBuffer = await win.webContents.printToPDF({
+          marginsType: 1,
+          printBackground: true,
+          printSelectionOnly: false,
+          landscape: false
+        });
+        fs.writeFileSync(result.filePath, pdfBuffer);
+        win.close();
+        return { success: true, path: result.filePath };
+      }
+      return { canceled: true };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
   });
 }

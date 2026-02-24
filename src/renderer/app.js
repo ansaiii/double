@@ -7,7 +7,8 @@ const state = {
   config: null,
   isStreaming: false,
   currentModel: 'deepseek',
-  theme: 'auto'
+  theme: 'auto',
+  pendingFiles: []
 };
 
 // DOM Elements
@@ -24,6 +25,7 @@ const elements = {
   settingsModal: document.getElementById('settings-modal'),
   renameModal: document.getElementById('rename-modal'),
   attachmentBtn: document.getElementById('attachment-btn'),
+  fileAttachments: document.getElementById('file-attachments'),
   currentModel: document.getElementById('current-model')
 };
 
@@ -238,7 +240,9 @@ async function renameSession() {
 // Send message
 async function sendMessage() {
   const content = elements.messageInput.value.trim();
-  if (!content || state.isStreaming) return;
+  const hasAttachments = state.pendingFiles.length > 0;
+  
+  if ((!content && !hasAttachments) || state.isStreaming) return;
   
   // Check if session exists
   if (!state.currentSession) {
@@ -249,15 +253,36 @@ async function sendMessage() {
   elements.messageInput.value = '';
   elements.messageInput.style.height = 'auto';
   
+  // Build message content with attachments
+  let fullContent = content;
+  let attachments = [];
+  
+  if (hasAttachments) {
+    for (const file of state.pendingFiles) {
+      if (file.extractedText) {
+        fullContent += `\n\n[文件: ${file.originalName}]\n${file.extractedText.substring(0, 5000)}`; // Limit text length
+      }
+      attachments.push(file);
+    }
+    
+    // Clear pending files
+    state.pendingFiles = [];
+    renderPendingFiles();
+  }
+  
   // Add user message
   const userMessage = {
     role: 'user',
-    content: content,
-    type: 'text'
+    content: fullContent,
+    type: 'text',
+    attachments: attachments.map(a => ({ name: a.originalName, path: a.path }))
   };
   
   const savedUserMsg = await ipcRenderer.invoke('add-message', state.currentSession.id, userMessage);
-  appendMessage(savedUserMsg);
+  appendMessage({
+    ...savedUserMsg,
+    content: content || '[文件内容]'
+  });
   
   // Update session in list
   const session = state.sessions.find(s => s.id === state.currentSession.id);
@@ -434,13 +459,27 @@ function setupEventListeners() {
     await createSession();
   });
   
-  // Export buttons (placeholder)
-  document.getElementById('export-md-btn').addEventListener('click', () => {
-    alert('导出功能开发中...');
+  // Export buttons
+  document.getElementById('export-md-btn').addEventListener('click', exportToMarkdown);
+  document.getElementById('export-pdf-btn').addEventListener('click', exportToPdf);
+  
+  // File attachment
+  elements.attachmentBtn.addEventListener('click', selectFile);
+  
+  // Drag and drop
+  document.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
   });
   
-  document.getElementById('export-pdf-btn').addEventListener('click', () => {
-    alert('导出功能开发中...');
+  document.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      await addPendingFile(file.path, file.name);
+    }
   });
   
   // Window controls
@@ -553,6 +592,189 @@ function setTheme(theme) {
   document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.theme === theme);
   });
+}
+
+// File handling functions
+async function selectFile() {
+  const fileInfo = await ipcRenderer.invoke('select-file');
+  if (fileInfo) {
+    await addPendingFile(fileInfo.path, fileInfo.name);
+  }
+}
+
+async function addPendingFile(filePath, fileName) {
+  const fileInfo = await ipcRenderer.invoke('upload-file', state.currentSession?.id || 'temp', filePath, fileName);
+  if (fileInfo.error) {
+    alert('文件上传失败: ' + fileInfo.message);
+    return;
+  }
+  
+  state.pendingFiles.push(fileInfo);
+  renderPendingFiles();
+}
+
+function renderPendingFiles() {
+  elements.fileAttachments.innerHTML = '';
+  
+  state.pendingFiles.forEach((file, index) => {
+    const attachment = document.createElement('div');
+    attachment.className = 'file-attachment';
+    
+    const icon = getFileIcon(file.fileName);
+    attachment.innerHTML = `
+      <span class="file-icon">${icon}</span>
+      <span class="file-name">${escapeHtml(file.originalName)}</span>
+      <button class="file-remove" data-index="${index}">✕</button>
+    `;
+    
+    elements.fileAttachments.appendChild(attachment);
+  });
+  
+  // Add remove listeners
+  document.querySelectorAll('.file-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const index = parseInt(btn.dataset.index);
+      state.pendingFiles.splice(index, 1);
+      renderPendingFiles();
+    });
+  });
+}
+
+function getFileIcon(fileName) {
+  const ext = fileName.split('.').pop().toLowerCase();
+  const icons = {
+    'pdf': '📄',
+    'doc': '📝',
+    'docx': '📝',
+    'txt': '📃',
+    'md': '📑',
+    'png': '🖼️',
+    'jpg': '🖼️',
+    'jpeg': '🖼️',
+    'gif': '🖼️'
+  };
+  return icons[ext] || '📎';
+}
+
+// Export functions
+async function exportToMarkdown() {
+  if (!state.currentSession) {
+    alert('请先选择一个会话');
+    return;
+  }
+  
+  const session = await ipcRenderer.invoke('get-session', state.currentSession.id);
+  if (!session || !session.messages.length) {
+    alert('会话中没有消息');
+    return;
+  }
+  
+  let content = `# ${session.title}\n\n`;
+  content += `> 导出时间: ${new Date().toLocaleString('zh-CN')}\n\n`;
+  content += `---\n\n`;
+  
+  session.messages.forEach(msg => {
+    const role = msg.role === 'user' ? '👤 用户' : '🤖 AI';
+    const time = new Date(msg.timestamp).toLocaleString('zh-CN');
+    content += `## ${role} · ${time}\n\n${msg.content}\n\n---\n\n`;
+  });
+  
+  const result = await ipcRenderer.invoke('export-markdown', state.currentSession.id, content);
+  if (result.success) {
+    showNotification(`已导出到: ${result.path}`);
+  } else if (result.error) {
+    alert('导出失败: ' + result.message);
+  }
+}
+
+async function exportToPdf() {
+  if (!state.currentSession) {
+    alert('请先选择一个会话');
+    return;
+  }
+  
+  const session = await ipcRenderer.invoke('get-session', state.currentSession.id);
+  if (!session || !session.messages.length) {
+    alert('会话中没有消息');
+    return;
+  }
+  
+  let htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${escapeHtml(session.title)}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; line-height: 1.6; }
+        h1 { color: #333; border-bottom: 2px solid #4a90d9; padding-bottom: 10px; }
+        .meta { color: #666; margin-bottom: 20px; }
+        .message { margin: 20px 0; padding: 15px; border-radius: 8px; }
+        .message.user { background: #e3f2fd; }
+        .message.assistant { background: #f5f5f5; }
+        .role { font-weight: bold; margin-bottom: 8px; }
+        .content { white-space: pre-wrap; }
+        code { background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; }
+        pre { background: rgba(0,0,0,0.05); padding: 12px; border-radius: 8px; overflow-x: auto; }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(session.title)}</h1>
+      <div class="meta">导出时间: ${new Date().toLocaleString('zh-CN')}</div>
+  `;
+  
+  session.messages.forEach(msg => {
+    const role = msg.role === 'user' ? '👤 用户' : '🤖 AI';
+    const content = formatContentForPdf(msg.content);
+    htmlContent += `
+      <div class="message ${msg.role}">
+        <div class="role">${role}</div>
+        <div class="content">${content}</div>
+      </div>
+    `;
+  });
+  
+  htmlContent += '</body></html>';
+  
+  const result = await ipcRenderer.invoke('export-pdf', htmlContent);
+  if (result.success) {
+    showNotification(`已导出到: ${result.path}`);
+  } else if (result.error) {
+    alert('导出失败: ' + result.message);
+  }
+}
+
+function formatContentForPdf(content) {
+  // Convert markdown-like to HTML
+  let html = escapeHtml(content);
+  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+function showNotification(message) {
+  // Simple notification - could be improved with a toast component
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--success-color);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    z-index: 9999;
+    font-size: 14px;
+    animation: slideIn 0.3s ease;
+  `;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
 }
 
 // Utility functions
