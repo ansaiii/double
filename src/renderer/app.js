@@ -127,25 +127,54 @@ async function loadSession(id) {
   
   state.currentSession = session;
   renderSessionList();
-  renderMessages(session.messages);
   
-  elements.welcomeScreen.style.display = 'none';
-  elements.messagesContainer.style.display = 'block';
+  // Use requestAnimationFrame for smooth rendering
+  requestAnimationFrame(() => {
+    renderMessages(session.messages);
+    elements.welcomeScreen.style.display = 'none';
+    elements.messagesContainer.style.display = 'block';
+  });
 }
 
-// Render messages
+// Render messages with virtualization for performance
 function renderMessages(messages) {
   elements.messagesContainer.innerHTML = '';
   
-  messages.forEach(msg => {
-    appendMessage(msg);
-  });
+  // Limit initial render for performance
+  const BATCH_SIZE = 50;
+  const totalMessages = messages.length;
   
-  scrollToBottom();
+  if (totalMessages <= BATCH_SIZE) {
+    messages.forEach(msg => appendMessage(msg));
+    scrollToBottom();
+  } else {
+    // Render last 50 messages first
+    const recentMessages = messages.slice(-BATCH_SIZE);
+    recentMessages.forEach(msg => appendMessage(msg));
+    scrollToBottom();
+    
+    // Show load more button if there are older messages
+    if (totalMessages > BATCH_SIZE) {
+      const loadMoreBtn = document.createElement('div');
+      loadMoreBtn.className = 'load-more-btn';
+      loadMoreBtn.innerHTML = `加载更早的 ${totalMessages - BATCH_SIZE} 条消息`;
+      loadMoreBtn.addEventListener('click', () => {
+        loadMoreBtn.remove();
+        const olderMessages = messages.slice(0, -BATCH_SIZE);
+        const fragment = document.createDocumentFragment();
+        olderMessages.forEach(msg => {
+          const msgDiv = createMessageElement(msg);
+          fragment.appendChild(msgDiv);
+        });
+        elements.messagesContainer.insertBefore(fragment, elements.messagesContainer.firstChild);
+      });
+      elements.messagesContainer.insertBefore(loadMoreBtn, elements.messagesContainer.firstChild);
+    }
+  }
 }
 
-// Append a single message
-function appendMessage(message) {
+// Create message element without appending
+function createMessageElement(message) {
   const msgDiv = document.createElement('div');
   msgDiv.className = `message ${message.role}`;
   msgDiv.dataset.id = message.id;
@@ -161,6 +190,12 @@ function appendMessage(message) {
     </div>
   `;
   
+  return msgDiv;
+}
+
+// Append a single message
+function appendMessage(message) {
+  const msgDiv = createMessageElement(message);
   elements.messagesContainer.appendChild(msgDiv);
   scrollToBottom();
 }

@@ -945,6 +945,22 @@ body {
   color: var(--text-tertiary);
 }
 
+/* Load more button */
+.load-more-btn {
+  text-align: center;
+  padding: 12px;
+  color: var(--accent-color);
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 8px;
+  margin: 8px 0;
+  transition: background 0.2s;
+}
+
+.load-more-btn:hover {
+  background: var(--bg-secondary);
+}
+
 /* Animations for notifications */
 @keyframes slideIn {
   from {

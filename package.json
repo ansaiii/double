@@ -1,22 +1,110 @@
 {
   "name": "double",
   "version": "1.0.0",
-  "description": "A cross-platform application for Windows, macOS, and Linux.",
+  "description": "你的本地 AI 助手 - 支持 DeepSeek 和 Moonshot",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux"
+    "build:linux": "electron-builder --linux",
+    "dist": "electron-builder --publish=never"
   },
   "keywords": [
     "electron",
-    "cross-platform",
-    "desktop"
+    "ai",
+    "chatbot",
+    "deepseek",
+    "moonshot",
+    "local-first",
+    "privacy"
   ],
-  "author": "Jack Monday",
+  "author": {
+    "name": "Jack Monday",
+    "email": "ansaiii@icloud.com"
+  },
   "license": "MIT",
+  "homepage": "https://github.com/ansaiii/double",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ansaiii/double.git"
+  },
+  "build": {
+    "appId": "com.ansaiii.double",
+    "productName": "Double",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "data",
+        "to": "data",
+        "filter": ["**/*"]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/puppeteer-core/**/*",
+      "node_modules/sharp/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "assets/icon.icns"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Office",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Double",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    }
+  },
   "devDependencies": {
     "electron": "^28.3.3",
     "electron-builder": "^24.0.0"

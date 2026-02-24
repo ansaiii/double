@@ -5,12 +5,14 @@ const DataStore = require('./dataStore');
 const AIService = require('./aiService');
 const FileService = require('./fileService');
 const BrowserService = require('./browserService');
+const { Logger, setupErrorHandlers } = require('./logger');
 
 let mainWindow;
 let dataStore;
 let aiService;
 let fileService;
 let browserService;
+let logger;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -39,27 +41,42 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Initialize data store
-  dataStore = new DataStore();
+  // Initialize logger first
+  logger = new Logger();
+  setupErrorHandlers(logger);
+  logger.info('Application starting', { version: app.getVersion() });
   
-  // Initialize AI service with config
-  const config = dataStore.getConfig();
-  aiService = new AIService(config);
-  
-  // Initialize file service
-  fileService = new FileService(dataStore.dataPath);
-  
-  // Initialize browser service
-  browserService = new BrowserService();
-  browserService.setStatusCallback((status) => {
-    // Send status update to renderer
-    if (mainWindow) {
-      mainWindow.webContents.send('browser-status', status);
-    }
-  });
+  try {
+    // Initialize data store
+    dataStore = new DataStore();
+    logger.info('DataStore initialized');
+    
+    // Initialize AI service with config
+    const config = dataStore.getConfig();
+    aiService = new AIService(config);
+    logger.info('AIService initialized');
+    
+    // Initialize file service
+    fileService = new FileService(dataStore.dataPath);
+    logger.info('FileService initialized');
+    
+    // Initialize browser service
+    browserService = new BrowserService();
+    browserService.setStatusCallback((status) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('browser-status', status);
+      }
+    });
+    logger.info('BrowserService initialized');
 
-  createWindow();
-  setupIPC();
+    createWindow();
+    setupIPC();
+    logger.info('Application ready');
+  } catch (error) {
+    logger.error('Failed to initialize application', { error: error.message, stack: error.stack });
+    dialog.showErrorBox('初始化错误', `应用启动失败: ${error.message}`);
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -127,12 +144,14 @@ function setupIPC() {
       
       // Check if API key is configured
       if (!config.models[model]?.apiKey) {
+        logger.warn('Chat attempted without API key', { model });
         return { 
           error: true, 
           message: `${model} API密钥未配置，请在设置中添加` 
         };
       }
 
+      logger.info('Chat request', { model, messageCount: messages.length });
       let fullContent = '';
       
       await aiService.chat(messages, model, (chunk, full) => {
@@ -145,9 +164,10 @@ function setupIPC() {
         });
       });
 
+      logger.info('Chat completed', { model, responseLength: fullContent.length });
       return { content: fullContent };
     } catch (error) {
-      console.error('Chat error:', error);
+      logger.error('Chat error', { error: error.message, model });
       return { 
         error: true, 
         message: error.message || '请求失败，请检查网络或API密钥' 
