@@ -378,3 +378,18 @@ function setupIPC() {
     }
   });
 
+
+  // Open grading interface
+  ipcMain.handle('open-grading', () => {
+    const gradingWindow = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false
+      }
+    });
+    gradingWindow.loadFile(path.join(__dirname, '../renderer/grading.html'));
+    return { success: true };
+  });
+

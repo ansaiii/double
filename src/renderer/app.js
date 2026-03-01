@@ -1096,3 +1096,9 @@ function debounce(func, wait) {
 
 // Start the app
 init();
+
+// Open grading interface
+function openGrading() {
+  const { ipcRenderer } = require('electron');
+  ipcRenderer.invoke('open-grading');
+}

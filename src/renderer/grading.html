@@ -1,0 +1,341 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Double - K12 教培助理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; }
+    .app { display: flex; height: 100vh; }
+    
+    /* Sidebar */
+    .sidebar { width: 280px; background: #16213e; border-right: 1px solid #0f3460; display: flex; flex-direction: column; }
+    .sidebar-header { padding: 20px; border-bottom: 1px solid #0f3460; }
+    .sidebar-header h2 { font-size: 18px; color: #e94560; }
+    .btn-add { width: 100%; padding: 10px; background: #e94560; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+    .btn-add:hover { background: #ff6b6b; }
+    .student-list { flex: 1; overflow-y: auto; padding: 10px; }
+    .student-item { padding: 12px; background: #0f3460; border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; }
+    .student-item:hover { background: #1a4a7a; }
+    .student-item.active { background: #e94560; }
+    .student-name { font-weight: 600; margin-bottom: 4px; }
+    .student-info { font-size: 12px; color: #aaa; }
+    
+    /* Main */
+    .main { flex: 1; display: flex; flex-direction: column; }
+    .header { padding: 20px; background: #16213e; border-bottom: 1px solid #0f3460; display: flex; justify-content: space-between; align-items: center; }
+    .content { flex: 1; padding: 20px; overflow-y: auto; }
+    
+    /* Upload Area */
+    .upload-area { border: 2px dashed #0f3460; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: 0.2s; }
+    .upload-area:hover { border-color: #e94560; background: rgba(233,69,96,0.1); }
+    .upload-area.dragover { border-color: #e94560; background: rgba(233,69,96,0.2); }
+    
+    /* Text Input */
+    .text-input { width: 100%; min-height: 200px; background: #0f3460; border: 1px solid #1a4a7a; color: #eee; padding: 15px; border-radius: 6px; resize: vertical; font-size: 14px; line-height: 1.6; }
+    
+    /* Grade Button */
+    .btn-grade { padding: 12px 30px; background: #e94560; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 15px; }
+    .btn-grade:hover { background: #ff6b6b; }
+    .btn-grade:disabled { background: #555; cursor: not-allowed; }
+    
+    /* Result */
+    .result-card { background: #16213e; border-radius: 8px; padding: 20px; margin-top: 20px; border: 1px solid #0f3460; }
+    .score-display { font-size: 48px; font-weight: bold; color: #e94560; text-align: center; margin-bottom: 20px; }
+    .score-max { font-size: 24px; color: #aaa; }
+    .section { margin-bottom: 20px; }
+    .section-title { font-size: 16px; color: #e94560; margin-bottom: 10px; font-weight: 600; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag { padding: 6px 12px; background: #0f3460; border-radius: 4px; font-size: 13px; }
+    .tag.good { background: #27ae60; }
+    .tag.bad { background: #c0392b; }
+    .comment { background: #0f3460; padding: 15px; border-radius: 6px; line-height: 1.8; }
+    .errors-list { list-style: none; }
+    .errors-list li { padding: 8px 0; border-bottom: 1px solid #1a4a7a; font-size: 14px; }
+    .errors-list li:last-child { border-bottom: none; }
+    .error-text { color: #e94560; }
+    .suggestion { color: #27ae60; }
+    
+    /* Loading */
+    .loading { text-align: center; padding: 40px; color: #aaa; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #0f3460; border-top-color: #e94560; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* Tabs */
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab { padding: 10px 20px; background: #0f3460; border: none; color: #aaa; cursor: pointer; border-radius: 6px 6px 0 0; }
+    .tab.active { background: #e94560; color: white; }
+    
+    /* Empty State */
+    .empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
+    .empty-state h3 { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>📚 学生档案</h2>
+        <button class="btn-add" onclick="createStudent()">+ 添加学生</button>
+      </div>
+      <div class="student-list" id="student-list">
+        <div class="empty-state"><small>暂无学生</small></div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <div class="header">
+        <h2 id="selected-student">选择学生开始批改</h2>
+        <select id="grade-select" style="padding: 8px; background: #0f3460; color: #eee; border: none; border-radius: 4px;">
+          <option value="primary">小学</option>
+          <option value="middle">初中</option>
+          <option value="high">高中</option>
+        </select>
+      </div>
+      
+      <div class="content">
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('input')">📝 输入作文</button>
+          <button class="tab" onclick="switchTab('upload')">📎 上传文件</button>
+        </div>
+        
+        <div id="input-panel">
+          <textarea class="text-input" id="composition-text" placeholder="在此粘贴或输入作文内容..."></textarea>
+          <button class="btn-grade" id="grade-btn" onclick="gradeComposition()" disabled>开始批改</button>
+        </div>
+        
+        <div id="upload-panel" style="display: none;">
+          <div class="upload-area" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <div style="font-size: 48px; margin-bottom: 15px;">📄</div>
+            <p>点击或拖拽上传 Word/PDF/TXT 文件</p>
+            <input type="file" id="file-input" accept=".doc,.docx,.pdf,.txt" style="display: none;" onchange="handleFileSelect(event)">
+          </div>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>AI 正在批改中，请稍候...</p>
+        </div>
+        
+        <div id="result" style="display: none;">
+          <div class="result-card">
+            <div class="score-display">
+              <span id="score-value">--</span>
+              <span class="score-max">/ <span id="score-max">100</span></span>
+            </div>
+            
+            <div class="section">
+              <div class="section-title">✨ 文章亮点</div>
+              <div class="tags" id="strengths"></div>
+            </div>
+            
+            <div class="section">
+              <div class="section-title">⚠️ 需要改进</div>
+              <div class="tags" id="weaknesses"></div>
+            </div>
+            
+            <div class="section" id="errors-section" style="display: none;">
+              <div class="section-title">🔧 错别字/病句</div>
+              <ul class="errors-list" id="errors-list"></ul>
+            </div>
+            
+            <div class="section">
+              <div class="section-title">💬 评语</div>
+              <div class="comment" id="comment"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let currentStudentId = null;
+    let students = [];
+
+    // Initialize
+    async function init() {
+      await loadStudents();
+      setupEventListeners();
+    }
+
+    // Load students
+    async function loadStudents() {
+      try {
+        const result = await window.electronAPI.invoke('student-get-all');
+        if (result.success) {
+          students = result.data || [];
+          renderStudentList();
+        }
+      } catch (e) {
+        console.error('Failed to load students:', e);
+      }
+    }
+
+    // Render student list
+    function renderStudentList() {
+      const list = document.getElementById('student-list');
+      if (students.length === 0) {
+        list.innerHTML = '<div class="empty-state"><small>暂无学生<br>点击右上角添加</small></div>';
+        return;
+      }
+      
+      list.innerHTML = students.map(s => \
+        <div class="student-item \" onclick="selectStudent('\')">
+          <div class="student-name">\</div>
+          <div class="student-info">\ · 已批改 \ 篇</div>
+        </div>
+      \).join('');
+    }
+
+    // Select student
+    function selectStudent(id) {
+      currentStudentId = id;
+      const student = students.find(s => s.id === id);
+      document.getElementById('selected-student').textContent = student ? \📝 \\ : '选择学生开始批改';
+      renderStudentList();
+    }
+
+    // Create student
+    async function createStudent() {
+      const name = prompt('学生姓名:');
+      if (!name) return;
+      const grade = prompt('年级 (如：五年级):', '五年级');
+      
+      try {
+        const result = await window.electronAPI.invoke('student-create', { name, grade });
+        if (result.success) {
+          await loadStudents();
+          selectStudent(result.data.id);
+        } else {
+          alert('创建失败：' + result.message);
+        }
+      } catch (e) {
+        alert('创建失败：' + e.message);
+      }
+    }
+
+    // Switch tab
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      document.getElementById('input-panel').style.display = tab === 'input' ? 'block' : 'none';
+      document.getElementById('upload-panel').style.display = tab === 'upload' ? 'block' : 'none';
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+      const textarea = document.getElementById('composition-text');
+      const gradeBtn = document.getElementById('grade-btn');
+      
+      textarea.addEventListener('input', () => {
+        gradeBtn.disabled = textarea.value.trim().length < 10;
+      });
+
+      // Drag and drop
+      const dropZone = document.getElementById('drop-zone');
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+      });
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFile(file);
+      });
+    }
+
+    // Handle file select
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) handleFile(file);
+    }
+
+    // Handle file
+    async function handleFile(file) {
+      alert('文件上传功能开发中，请先使用文本输入');
+    }
+
+    // Grade composition
+    async function gradeComposition() {
+      const text = document.getElementById('composition-text').value.trim();
+      if (!text || !currentStudentId) {
+        alert('请先选择学生并输入作文内容');
+        return;
+      }
+
+      const grade = document.getElementById('grade-select').value;
+      
+      // Show loading
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('grade-btn').disabled = true;
+
+      try {
+        const result = await window.electronAPI.invoke('composition-grade', text, {
+          grade,
+          maxScore: 100,
+          commentStyle: 'encouraging'
+        });
+
+        if (result.success) {
+          displayResult(result.data);
+        } else {
+          alert('批改失败：' + result.message);
+        }
+      } catch (e) {
+        alert('批改失败：' + e.message);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('grade-btn').disabled = false;
+      }
+    }
+
+    // Display result
+    function displayResult(data) {
+      document.getElementById('score-value').textContent = data.score || '--';
+      document.getElementById('score-max').textContent = data.maxScore || 100;
+      
+      // Strengths
+      const strengthsEl = document.getElementById('strengths');
+      strengthsEl.innerHTML = (data.strengths || []).map(s => \<span class="tag good">✓ \</span>\).join('') || '<small>暂无</small>';
+      
+      // Weaknesses
+      const weaknessesEl = document.getElementById('weaknesses');
+      weaknessesEl.innerHTML = (data.weaknesses || []).map(w => \<span class="tag bad">⚠ \</span>\).join('') || '<small>暂无</small>';
+      
+      // Errors
+      const errorsSection = document.getElementById('errors-section');
+      const errorsList = document.getElementById('errors-list');
+      if (data.errors && data.errors.length > 0) {
+        errorsSection.style.display = 'block';
+        errorsList.innerHTML = data.errors.map(e => \
+          <li>
+            <span class="error-text">"\"</span> 
+            → <span class="suggestion">"\"</span>
+          </li>
+        \).join('');
+      } else {
+        errorsSection.style.display = 'none';
+      }
+      
+      // Comment
+      document.getElementById('comment').textContent = data.comment || '暂无评语';
+      
+      // Show result
+      document.getElementById('result').style.display = 'block';
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>
