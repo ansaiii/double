@@ -135,3 +135,28 @@ class AIService {
 }
 
 module.exports = AIService;
+
+// ========== Simple AI Call Function ==========
+// For non-streaming calls (grading, analysis, etc.)
+
+async function callAI(prompt, model = 'deepseek') {
+  const AIService = require('./aiService');
+  const { getConfig } = require('./dataStore');
+  
+  const config = getConfig();
+  const aiService = new AIService(config);
+  
+  const messages = [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: prompt }
+  ];
+  
+  let fullContent = '';
+  await aiService.chat(messages, model, (chunk) => {
+    fullContent += chunk;
+  });
+  
+  return fullContent;
+}
+
+module.exports = { callAI };
