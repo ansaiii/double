@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+﻿const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const DataStore = require('./dataStore');
@@ -77,7 +77,7 @@ app.whenReady().then(() => {
     if (logger) {
       logger.error('Failed to initialize application', { error: error.message, stack: error.stack });
     }
-    dialog.showErrorBox('初始化错误', `应用启动失败: ${error.message}`);
+    dialog.showErrorBox('鍒濆鍖栭敊璇?, `搴旂敤鍚姩澶辫触: ${error.message}`);
     app.quit();
   }
 });
@@ -150,7 +150,7 @@ function setupIPC() {
         logger.warn('Chat attempted without API key', { model });
         return { 
           error: true, 
-          message: `${model} API密钥未配置，请在设置中添加` 
+          message: `${model} API瀵嗛挜鏈厤缃紝璇峰湪璁剧疆涓坊鍔燻 
         };
       }
 
@@ -173,7 +173,7 @@ function setupIPC() {
       logger.error('Chat error', { error: error.message, model });
       return { 
         error: true, 
-        message: error.message || '请求失败，请检查网络或API密钥' 
+        message: error.message || '璇锋眰澶辫触锛岃妫€鏌ョ綉缁滄垨API瀵嗛挜' 
       };
     }
   });
@@ -189,9 +189,9 @@ function setupIPC() {
     
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'info',
-      title: '设置',
-      message: '请在设置面板中配置API密钥',
-      buttons: ['打开设置', '取消']
+      title: '璁剧疆',
+      message: '璇峰湪璁剧疆闈㈡澘涓厤缃瓵PI瀵嗛挜',
+      buttons: ['鎵撳紑璁剧疆', '鍙栨秷']
     });
 
     return result.response === 0;
@@ -202,10 +202,10 @@ function setupIPC() {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       filters: [
-        { name: '所有支持的文件', extensions: ['pdf', 'docx', 'doc', 'txt', 'md', 'png', 'jpg', 'jpeg', 'gif'] },
-        { name: '文档', extensions: ['pdf', 'docx', 'doc', 'txt', 'md'] },
-        { name: '图片', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'] },
-        { name: '所有文件', extensions: ['*'] }
+        { name: '鎵€鏈夋敮鎸佺殑鏂囦欢', extensions: ['pdf', 'docx', 'doc', 'txt', 'md', 'png', 'jpg', 'jpeg', 'gif'] },
+        { name: '鏂囨。', extensions: ['pdf', 'docx', 'doc', 'txt', 'md'] },
+        { name: '鍥剧墖', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'] },
+        { name: '鎵€鏈夋枃浠?, extensions: ['*'] }
       ]
     });
 
@@ -245,13 +245,13 @@ function setupIPC() {
   ipcMain.handle('export-markdown', async (event, sessionId, content) => {
     try {
       const session = dataStore.getSession(sessionId);
-      if (!session) return { error: true, message: '会话不存在' };
+      if (!session) return { error: true, message: '浼氳瘽涓嶅瓨鍦? };
 
       const result = await dialog.showSaveDialog(mainWindow, {
         defaultPath: `${session.title}.md`,
         filters: [
           { name: 'Markdown', extensions: ['md'] },
-          { name: '所有文件', extensions: ['*'] }
+          { name: '鎵€鏈夋枃浠?, extensions: ['*'] }
         ]
       });
 
@@ -268,7 +268,7 @@ function setupIPC() {
   ipcMain.handle('export-pdf', async (event, htmlContent) => {
     try {
       const result = await dialog.showSaveDialog(mainWindow, {
-        defaultPath: '对话.pdf',
+        defaultPath: '瀵硅瘽.pdf',
         filters: [
           { name: 'PDF', extensions: ['pdf'] }
         ]
@@ -325,3 +325,56 @@ function setupIPC() {
     return browserService.getStatus();
   });
 }
+
+  // ========== Student Management ==========
+  ipcMain.handle('student-get-all', async () => {
+    try {
+      const studentService = require('./studentService');
+      const students = studentService.getAllStudents();
+      return { success: true, data: students };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('student-create', async (event, data) => {
+    try {
+      const studentService = require('./studentService');
+      const student = studentService.createStudent(data);
+      return { success: true, data: student };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('student-delete', async (event, studentId) => {
+    try {
+      const studentService = require('./studentService');
+      studentService.deleteStudent(studentId);
+      return { success: true };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  // ========== Composition Grading ==========
+  ipcMain.handle('composition-grade', async (event, text, options) => {
+    try {
+      const { gradeComposition } = require('./compositionService');
+      const result = await gradeComposition(text, options);
+      return { success: true, data: result };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('composition-create-batch', async (event, studentId, title) => {
+    try {
+      const { createBatch } = require('./compositionService');
+      const batch = createBatch(studentId, title);
+      return { success: true, data: batch };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
