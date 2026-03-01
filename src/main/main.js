@@ -393,3 +393,94 @@ function setupIPC() {
     return { success: true };
   });
 
+
+  // ========== Template Management ==========
+  ipcMain.handle('template-get-all', async () => {
+    try {
+      const { getAllTemplates } = require('./templateService');
+      const templates = getAllTemplates();
+      return { success: true, data: templates };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('template-add', async (event, grade, text, tags) => {
+    try {
+      const { addTemplate } = require('./templateService');
+      const template = addTemplate(grade, text, tags);
+      return { success: true, data: template };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('template-delete', async (event, grade, templateId) => {
+    try {
+      const { deleteTemplate } = require('./templateService');
+      deleteTemplate(grade, templateId);
+      return { success: true };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  // ========== Batch Grading ==========
+  ipcMain.handle('batch-create', async (event, studentId, compositions) => {
+    try {
+      const { createBatchTask } = require('./batchService');
+      const batch = createBatchTask(studentId, compositions);
+      return { success: true, data: batch };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('batch-execute', async (event, batchId, options) => {
+    try {
+      const { executeBatch } = require('./batchService');
+      const result = await executeBatch(batchId, options);
+      return { success: true, data: result };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('batch-get', async (event, batchId) => {
+    try {
+      const { getBatchTask } = require('./batchService');
+      const batch = getBatchTask(batchId);
+      return { success: true, data: batch };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  ipcMain.handle('batch-list', async (event, studentId) => {
+    try {
+      const { getAllBatchTasks } = require('./batchService');
+      const batches = getAllBatchTasks(studentId);
+      return { success: true, data: batches };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  });
+
+  // Open additional pages
+  ipcMain.handle('open-batch-grading', () => {
+    const win = new BrowserWindow({ width: 1200, height: 800, webPreferences: { nodeIntegration: true, contextIsolation: false } });
+    win.loadFile(path.join(__dirname, '../renderer/batch-grading.html'));
+    return { success: true };
+  });
+
+  ipcMain.handle('open-report', () => {
+    const win = new BrowserWindow({ width: 1000, height: 800, webPreferences: { nodeIntegration: true, contextIsolation: false } });
+    win.loadFile(path.join(__dirname, '../renderer/report.html'));
+    return { success: true };
+  });
+
+  ipcMain.handle('open-parent-comm', () => {
+    const win = new BrowserWindow({ width: 1200, height: 800, webPreferences: { nodeIntegration: true, contextIsolation: false } });
+    win.loadFile(path.join(__dirname, '../renderer/parent-comm.html'));
+    return { success: true };
+  });

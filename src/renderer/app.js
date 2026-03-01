@@ -1102,3 +1102,14 @@ function openGrading() {
   const { ipcRenderer } = require('electron');
   ipcRenderer.invoke('open-grading');
 }
+
+// Navigation buttons
+document.addEventListener('DOMContentLoaded', () => {
+  const batchBtn = document.getElementById('batch-grading-btn');
+  const reportBtn = document.getElementById('report-btn');
+  const parentBtn = document.getElementById('parent-comm-btn');
+  
+  if (batchBtn) batchBtn.addEventListener('click', () => window.electronAPI.invoke('open-batch-grading'));
+  if (reportBtn) reportBtn.addEventListener('click', () => window.electronAPI.invoke('open-report'));
+  if (parentBtn) parentBtn.addEventListener('click', () => window.electronAPI.invoke('open-parent-comm'));
+});
